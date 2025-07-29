@@ -2,6 +2,9 @@
 
 Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 연결하고, Flask 에서 제공하는 API를 통해 Jetson Orin Nano에서 인식되는 SSID 리스트 받아와 연결해주는 기능
 
+### 사용 필요성 
+- 임베디드 프로젝트, IoT 프로젝트를 진행할 때, RaspberryPi 나 Jetson Orin Nano 에서 직접 Wifi 를 연결하지 않고 스마트폰에서 간접적으로 Wifi 를 연결할 때 사용하면 된다.
+- 대표적으로 홈캠을 새로 사서 집에 있는 Wifi 에 연결할 때 필요한 프로세스를 구현했다고 생각하면 좋을 것 같다.
 
 ### 설정 방법
 0. 다음과 같은 동글을 사서 Jetson Orin Nano에 끼운다. ChatGPT 의견으로는 Realtek RTL8188CUS, Realtek RTL8812AU 칩셋이 내장되어 있는 Wifi 동글이어야 한다.
@@ -68,4 +71,19 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
 5. Jetson Orin Nano에서 해당 SSID 연결 정보 확인 후 연결
 6. AP모드 종료
 
+![IMG_0639](https://github.com/user-attachments/assets/1a688f9a-d595-49f3-a3e9-f5158651da71)
 
+
+### 참고
+WiFi 리스트 API 주소
+```
+http://192.168.4.1/wifi-scan
+```
+SSID 연결 API 주소
+```
+http://192.168.4.1/connect
+{
+   ssid : string
+   password : string
+}
+```
