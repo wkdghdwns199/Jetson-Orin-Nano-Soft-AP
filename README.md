@@ -45,7 +45,7 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
 
 2. Wifi 연결 후 다음 주소로 스마트폰 브라우저에서 접속이 가능하다. Wifi 리스트 화면인데 리스트가 뜨기까지 시간이 좀 걸린다.
    ```bash
-   http://192.168.4.1/wifi
+   http://192.168.4.1:5000/wifi
    ```
 
 3. 접속하면 다음과 같이 화면이 뜨는데, 그 중 하나를 선택하여 클릭한다.
@@ -77,11 +77,11 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
 ### 참고
 WiFi 리스트 API 주소
 ```
-http://192.168.4.1/wifi-scan
+http://192.168.4.1:5000/wifi-scan
 ```
 SSID 연결 API 주소
 ```
-http://192.168.4.1/connect
+http://192.168.4.1:5000/connect
 {
    ssid : string
    password : string
