@@ -1,4 +1,4 @@
-<img width="1920" height="2560" alt="image" src="https://github.com/user-attachments/assets/08a9dc77-cee0-46cd-bf8d-ad533015bbd3" /># Jetson-Orin-Nano-Soft-AP
+# Jetson-Orin-Nano-Soft-AP
 
 Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 연결하고, Flask 에서 제공하는 API를 통해 Jetson Orin Nano에서 인식되는 SSID 리스트 받아와 연결해주는 기능
 
@@ -19,7 +19,7 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
    ```bash
    ./setup_softap.sh
    ```
-<img width="500" height="200" alt="image" src="https://github.com/user-attachments/assets/3dfe717d-aa21-493a-bd6a-97e88ec5f009" />
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/3dfe717d-aa21-493a-bd6a-97e88ec5f009" />
 
 
 
@@ -37,6 +37,7 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
 
 ### 사용 방법
 1. AP 모드로 변경해야 한다! (설정 방법 4번 참고) AP 모드로 변경하면 다음 Wifi 가 스마트폰에 뜰 것이다.
+<img width="200" height="500" alt="image" src="https://github.com/user-attachments/assets/c1056d10-6c2f-4c85-9038-aeb6ac03d648" />
 
 
 2. Wifi 연결 후 다음 주소로 스마트폰 브라우저에서 접속이 가능하다. Wifi 리스트 화면인데 리스트가 뜨기까지 시간이 좀 걸린다.
@@ -53,10 +54,11 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
 
 
 5. 비밀번호를 입력하면 연결이 된다. (아직 연결 실패에 대한 예외처리 안함. 업데이트 예정)
-<img width="500" height="200" alt="image" src="https://github.com/user-attachments/assets/ad501c2b-498c-482c-b134-9b547d6b04cc" />
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/ad501c2b-498c-482c-b134-9b547d6b04cc" />
 
 
 6. AP 모드가 Jetson Orin Nano 에서 종료된다.
+
 
 ### 순서도
 1. AP모드 Jetson Orin Nano 에서 실행
