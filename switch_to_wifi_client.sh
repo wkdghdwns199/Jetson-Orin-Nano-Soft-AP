@@ -37,6 +37,13 @@ sudo systemctl restart NetworkManager
 echo "[6] Scanning available Wi-Fi networks..."
 nmcli dev wifi list ifname "$WIFI_IFACE"
 
+echo "[7] Restoring systemd-resolved and resolv.conf symlink..."
+sudo systemctl unmask systemd-resolved.service
+sudo rm -f /etc/resolv.conf
+sudo ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+sudo systemctl enable systemd-resolved
+sudo systemctl restart systemd-resolved
+
 echo ""
 echo "[✅] Jetson is now back in Wi-Fi client mode using $WIFI_IFACE."
 echo "👉 Use the following command to connect to a Wi-Fi network:"

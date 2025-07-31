@@ -11,31 +11,14 @@ Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 �
    ```
    https://link.coupang.com/a/cHxUdw
    ```
-1. 다음과 같이 기본적으로 필요한 것들을 다음 명령어로 설치한다.
-```
-# Realtek Wi-Fi 드라이버 설치
-sudo apt update
-sudo apt install dkms git build-essential -y
-git clone https://github.com/aircrack-ng/rtl8812au.git
-cd rtl8812au
-sudo make dkms_install
-cd ..
-sudo reboot
-```
-2. 필수로 필요한 패키지들을 설치한다.
-```
-sudo apt install -y hostapd dnsmasq network-manager net-tools iw python3-pip
-pip3 install flask
-```
-
-3. ~ 경로 (홈 경로) 에 setup_softap.sh, switch_to_wifi_client.sh, wifi_server.py 를 위치시킨다. (Clone 을 하면 그 경로로 이동해야 한다.)
-4. setup_softap.sh, switch_to_wifi_client.sh 를 다음과 같이 권한을 바꾼다.
+2. ~ 경로 (홈 경로) 에 setup_softap.sh, switch_to_wifi_client.sh, wifi_server.py 를 위치시킨다. (Clone 을 하면 그 경로로 이동해야 한다.)
+3. setup_softap.sh, switch_to_wifi_client.sh 를 다음과 같이 권한을 바꾼다.
    ```bash
    chmod +x setup_softap.sh
    chmod +x switch_to_wifi_client.sh
    ```
 
-5. 다음 명령어를 입력하여 AP모드로 변경한다. AP 명령어를 입력하면 사진과 같이 와이파이가 끊겨버린다.
+4. 다음 명령어를 입력하여 AP모드로 변경한다. AP 명령어를 입력하면 사진과 같이 와이파이가 끊겨버린다.
    ```bash
    ./setup_softap.sh
    ```
@@ -43,13 +26,13 @@ pip3 install flask
 
 
 
-6. 다음 명령어로 Wifi 리스트 API Host 를 실행한다.
+5. 다음 명령어로 Wifi 리스트 API Host 를 실행한다.
    ```bash
    sudo python3 wifi_server.py # 만약 python3 가 안 깔려있다면 깔도록 하자.
    ```
 
 
-7. 만약 AP모드를 끄고 싶고 다시 Wifi 연결 모드로 변경하고 싶다면 다음 명령어를 입력한다.
+6. 만약 AP모드를 끄고 싶고 다시 Wifi 연결 모드로 변경하고 싶다면 다음 명령어를 입력한다.
    ```bash
    ./switch_to_wifi_client.sh
    ```
