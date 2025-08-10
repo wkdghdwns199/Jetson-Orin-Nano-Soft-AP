@@ -1,0 +1,62 @@
+Aug 10 21:32:16 orin-desktop systemd[1]: Starting dnsmasq - A lightweight DHCP and caching DNS server...
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit dnsmasq.service has begun execution[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit dnsmasq.service has begun execution.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 2184.[0m
+Aug 10 21:32:16 orin-desktop dnsmasq[3632]: [0;1;31m[0;1;39m[0;1;31mbad option at line 5 of /etc/dnsmasq.conf[0m
+Aug 10 21:32:16 orin-desktop dnsmasq[3632]: [0;1;31m[0;1;39m[0;1;31mFAILED to start up[0m
+Aug 10 21:32:16 orin-desktop systemd[1]: [0;1;39m[0;1;31m[0;1;39mdnsmasq.service: Control process exited, code=exited, status=1/FAILURE[0m
+[0;38;5;245m░░ [0m[0;32mSubject: Unit process exited[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mAn ExecStartPre= process belonging to unit dnsmasq.service has exited.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe process' exit code is 'exited' and its exit status is 1.[0m
+Aug 10 21:32:16 orin-desktop systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mdnsmasq.service: Failed with result 'exit-code'.[0m
+[0;38;5;245m░░ [0m[0;32mSubject: Unit failed[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe unit dnsmasq.service has entered the 'failed' state with result 'exit-code'.[0m
+Aug 10 21:32:16 orin-desktop systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start dnsmasq - A lightweight DHCP and caching DNS server.[0m
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit dnsmasq.service has failed[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit dnsmasq.service has finished with a failure.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 2184 and the job result is failed.[0m
+Aug 10 21:34:31 orin-desktop systemd[1]: Starting dnsmasq - A lightweight DHCP and caching DNS server...
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit dnsmasq.service has begun execution[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit dnsmasq.service has begun execution.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 2872.[0m
+Aug 10 21:34:31 orin-desktop systemd[1]: [0;1;39m[0;1;31m[0;1;39mdnsmasq.service: Control process exited, code=exited, status=1/FAILURE[0m
+[0;38;5;245m░░ [0m[0;32mSubject: Unit process exited[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mAn ExecStartPre= process belonging to unit dnsmasq.service has exited.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe process' exit code is 'exited' and its exit status is 1.[0m
+Aug 10 21:34:31 orin-desktop systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mdnsmasq.service: Failed with result 'exit-code'.[0m
+[0;38;5;245m░░ [0m[0;32mSubject: Unit failed[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe unit dnsmasq.service has entered the 'failed' state with result 'exit-code'.[0m
+Aug 10 21:34:31 orin-desktop systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start dnsmasq - A lightweight DHCP and caching DNS server.[0m
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit dnsmasq.service has failed[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit dnsmasq.service has finished with a failure.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 2872 and the job result is failed.[0m

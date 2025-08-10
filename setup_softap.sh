@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-echo "[1] Detecting Wi-Fi interface..."
-WIFI_IFACE=$(iw dev | awk '$1=="Interface"{print $2}' | head -n 1)
+# Set your hotspot interface here
+AP_IFACE="wlxa047d7115a68"    # <-- Replace with your real AP interface
+AP_IP="192.168.4.1"
+SSID="JetsonAP"
+CHANNEL=6
+AP_PSK="12345678"             # <-- Change to your desired password
 
-if [ -z "$WIFI_IFACE" ]; then
-  echo "❌ No Wi-Fi interface found. Exiting."
-  exit 1
-fi
-echo "✅ Detected Wi-Fi interface: $WIFI_IFACE"
+echo "[1] Using fixed Wi-Fi interface: $AP_IFACE"
 
 echo "[2] Installing required packages..."
 # sudo apt update
@@ -18,32 +18,40 @@ echo "[3] Stopping services..."
 sudo systemctl stop hostapd || true
 sudo systemctl stop dnsmasq || true
 sudo systemctl stop NetworkManager || true
+sudo pkill -f "wpa_supplicant.*${AP_IFACE}" 2>/dev/null || true
 
 echo "[4] Configuring Wi-Fi interface..."
-sudo ip link set "$WIFI_IFACE" down
-sudo ip addr flush dev "$WIFI_IFACE"
-sudo ip addr add 192.168.4.1/24 dev "$WIFI_IFACE"
-sudo ip link set "$WIFI_IFACE" up
+sudo ip link set "$AP_IFACE" down
+sudo ip addr flush dev "$AP_IFACE"
+sudo ip addr add "$AP_IP/24" dev "$AP_IFACE"
+sudo ip link set "$AP_IFACE" up
 
 echo "[5] Writing hostapd config..."
+sudo mkdir -p /etc/hostapd
 sudo bash -c "cat > /etc/hostapd/hostapd.conf" <<EOF
-interface=$WIFI_IFACE
+interface=$AP_IFACE
 driver=nl80211
-ssid=JetsonAP
+ssid=$SSID
 hw_mode=g
-channel=6
+channel=$CHANNEL
 auth_algs=1
 wmm_enabled=0
+
+# WPA2 security
+wpa=2
+wpa_passphrase=$AP_PSK
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
 EOF
 
-echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' | sudo tee /etc/default/hostapd
+echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' | sudo tee /etc/default/hostapd >/dev/null
 
 echo "[6] Writing dnsmasq config..."
 sudo mkdir -p /etc/dnsmasq.d
 sudo bash -c "cat > /etc/dnsmasq.d/softap.conf" <<EOF
-interface=$WIFI_IFACE
+interface=$AP_IFACE
 bind-interfaces
-listen-address=192.168.4.1
+listen-address=$AP_IP
 dhcp-range=192.168.4.10,192.168.4.100,12h
 EOF
 
@@ -61,7 +69,8 @@ sudo systemctl restart hostapd
 
 echo ""
 echo "✅ SoftAP setup complete!"
-echo "📶 SSID: JetsonAP"
-echo "🖥️  Interface: $WIFI_IFACE"
-echo "🌐 Access Point IP: http://192.168.4.1"
+echo "📶 SSID: $SSID"
+echo "🔑 Password: $AP_PSK"
+echo "🖥️  Interface: $AP_IFACE"
+echo "🌐 Access Point IP: http://$AP_IP"
 
