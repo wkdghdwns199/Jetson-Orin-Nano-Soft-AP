@@ -40,11 +40,11 @@ fi
 # ================== Packages ==================
 log "Installing packages (hostapd, dnsmasq, netfilter-persistent)"
 export DEBIAN_FRONTEND=noninteractive
-apt update
-apt install -y hostapd dnsmasq iptables-persistent netfilter-persistent || true
+#apt update
+#apt install -y hostapd dnsmasq iptables-persistent netfilter-persistent || true
 
 # If install scripts failed earlier, fix and reconfigure later once config is in place
-apt --fix-broken install -y || true
+#apt --fix-broken install -y || true
 
 # ================== NetworkManager roles ==================
 log "Let NetworkManager manage ONLY the client (${STA_IF})"
@@ -85,10 +85,7 @@ channel=$AP_CH
 ieee80211n=1
 wmm_enabled=1
 auth_algs=1
-wpa=2
-wpa_passphrase=$AP_PASS
-wpa_key_mgmt=WPA-PSK
-rsn_pairwise=CCMP
+wpa=0
 EOF
 
 # Ensure service knows the config path

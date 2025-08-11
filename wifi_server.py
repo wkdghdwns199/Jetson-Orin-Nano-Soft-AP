@@ -1,103 +1,149 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, abort
 import subprocess
+import shlex
 import re
-import os
 import time
+import ipaddress
+
+# ====== CONFIG: update if your interfaces/subnet differ ======
+AP_IF = "wlxa047d7115a68"        # SoftAP interface (hostapd/dnsmasq running)
+STA_IF = "wlP1p1s0"              # Wi-Fi client interface (NetworkManager)
+AP_IP = "192.168.4.1"
+AP_SUBNET = ipaddress.ip_network("192.168.4.0/24")
+# =============================================================
 
 app = Flask(__name__)
 
-# ---------------- Wi-Fi Interface Utilities ----------------
-def get_wireless_interface(retries=3, delay=1):
-    for _ in range(retries):
+# ---------------- Helpers ----------------
+def run(cmd, timeout=15):
+    """Run shell command, return (code, stdout, stderr)."""
+    if isinstance(cmd, str):
+        cmd = shlex.split(cmd)
+    p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    return p.returncode, p.stdout.strip(), p.stderr.strip()
+
+def ensure_roles():
+    """Make sure AP iface is unmanaged by NM, STA iface is managed."""
+    run(["nmcli", "device", "set", AP_IF, "managed", "no"])
+    run(["nmcli", "device", "set", STA_IF, "managed", "yes"])
+    # Keep AP IP (AP service should already do this)
+    run(["ip", "addr", "add", f"{AP_IP}/24", "dev", AP_IF])
+    run(["ip", "link", "set", AP_IF, "up"])
+
+def client_has_private_ip():
+    """Check if STA_IF has a private IPv4 address."""
+    code, out, _ = run(["nmcli", "-t", "-f", "IP4.ADDRESS", "device", "show", STA_IF])
+    if code != 0:
+        return False
+    for line in out.splitlines():
+        if not line:
+            continue
+        ip = line.split(":")[-1].split("/")[0]
         try:
-            output = subprocess.check_output(["iw", "dev"]).decode()
-            match = re.search(r"Interface\s+(\w+)", output)
-            if match:
-                return match.group(1)
+            ipaddr = ipaddress.ip_address(ip)
+            if ipaddr.is_private:
+                return True
+        except ValueError:
+            pass
+    return False
+
+def get_ip4_info():
+    """Return dict with ip, gateway, dns list for STA_IF (IPv4)."""
+    info = {"ip": None, "gateway": None, "dns": []}
+    code, out, _ = run(["nmcli", "-t", "-f", "IP4.ADDRESS,IP4.GATEWAY,IP4.DNS", "device", "show", STA_IF])
+    if code != 0 or not out:
+        return info
+
+    addrs = []
+    dns_list = []
+    gw = None
+    for raw in out.splitlines():
+        if not raw.strip():
+            continue
+        key, val = raw.split(":", 1) if ":" in raw else (raw, "")
+        key = key.strip()
+        val = val.strip()
+        if key.startswith("IP4.ADDRESS"):
+            # address may be like 192.168.1.23/24
+            ip = val.split("/")[0]
+            addrs.append(ip)
+        elif key.startswith("IP4.GATEWAY"):
+            gw = val
+        elif key.startswith("IP4.DNS"):
+            dns_list.append(val)
+    # choose first private IPv4 if available, else first
+    chosen_ip = None
+    for a in addrs:
+        try:
+            if ipaddress.ip_address(a).is_private:
+                chosen_ip = a
+                break
         except Exception:
             pass
-        time.sleep(delay)
-    return None
+    if not chosen_ip and addrs:
+        chosen_ip = addrs[0]
 
-# ---------------- Mode Switch ----------------
-def stop_softap_and_prepare_client_mode(iface):
-    print("[🔁] Switching to client mode...")
-    subprocess.run(["sudo", "systemctl", "stop", "hostapd"], check=False)
-    subprocess.run(["sudo", "systemctl", "stop", "dnsmasq"], check=False)
-    subprocess.run(["sudo", "systemctl", "disable", "hostapd"], check=False)
-    subprocess.run(["sudo", "systemctl", "disable", "dnsmasq"], check=False)
+    info["ip"] = chosen_ip
+    info["gateway"] = gw
+    info["dns"] = dns_list
+    return info
 
-    subprocess.run(["sudo", "ip", "addr", "flush", "dev", iface])
-    subprocess.run(["sudo", "ip", "link", "set", iface, "down"])
-    subprocess.run(["sudo", "ip", "link", "set", iface, "up"])
-
-    subprocess.run(["sudo", "rm", "-f", "/etc/hostapd/hostapd.conf"])
-    subprocess.run(["sudo", "rm", "-f", "/etc/default/hostapd"])
-    subprocess.run(["sudo", "rm", "-f", "/etc/dnsmasq.d/softap.conf"])
-
-    subprocess.run(["sudo", "systemctl", "unmask", "NetworkManager"], check=False)
-    subprocess.run(["sudo", "systemctl", "enable", "NetworkManager"], check=False)
-    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False)
-
-    subprocess.run(["sudo", "systemctl", "unmask", "systemd-resolved.service"], check=False)
-    subprocess.run(["sudo", "rm", "-f", "/etc/resolv.conf"])
-    subprocess.run(["sudo", "ln", "-s", "/run/systemd/resolve/stub-resolv.conf", "/etc/resolv.conf"])
-    subprocess.run(["sudo", "systemctl", "enable", "systemd-resolved"], check=False)
-    subprocess.run(["sudo", "systemctl", "restart", "systemd-resolved"], check=False)
-
-    print("[⏳] Waiting for interface to switch modes...")
-    time.sleep(3)
-
-def start_softap(iface):
-    print("[📡] Re-enabling SoftAP...")
-
-    subprocess.run(["sudo", "ip", "link", "set", iface, "down"])
-    subprocess.run(["sudo", "ip", "addr", "flush", "dev", iface])
-    subprocess.run(["sudo", "ip", "addr", "add", "192.168.4.1/24", "dev", iface])
-    subprocess.run(["sudo", "ip", "link", "set", iface, "up"])
-
-    subprocess.run(["sudo", "bash", "-c", f"cat > /etc/hostapd/hostapd.conf <<EOF\ninterface={iface}\ndriver=nl80211\nssid=JetsonAP\nhw_mode=g\nchannel=6\nauth_algs=1\nwmm_enabled=0\nEOF"])
-    subprocess.run(["sudo", "bash", "-c", "echo 'DAEMON_CONF=\"/etc/hostapd/hostapd.conf\"' > /etc/default/hostapd"])
-
-    subprocess.run(["sudo", "mkdir", "-p", "/etc/dnsmasq.d"])
-    subprocess.run(["sudo", "bash", "-c", f"cat > /etc/dnsmasq.d/softap.conf <<EOF\ninterface={iface}\nbind-interfaces\nlisten-address=192.168.4.1\ndhcp-range=192.168.4.10,192.168.4.100,12h\nEOF"])
-
-    subprocess.run(["sudo", "systemctl", "unmask", "hostapd"])
-    subprocess.run(["sudo", "systemctl", "enable", "hostapd"])
-    subprocess.run(["sudo", "systemctl", "enable", "dnsmasq"])
-
-    time.sleep(2)
-    subprocess.run(["sudo", "systemctl", "restart", "dnsmasq"])
-    subprocess.run(["sudo", "systemctl", "restart", "hostapd"])
-
-    print("[✅] SoftAP restarted.")
-    print("[⏳] Waiting for SoftAP to stabilize...")
-    time.sleep(3)
-
-# ---------------- Wi-Fi Scan ----------------
-def scan_wifi():
-    iface = get_wireless_interface()
-    if not iface:
-        return []
-
-    print(f"[🔍] Scanning for Wi-Fi on interface {iface}")
+def only_from_softap():
+    """Allow access only when the caller is in the AP subnet."""
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     try:
-        output = subprocess.check_output(["sudo", "iwlist", iface, "scan"], stderr=subprocess.DEVNULL).decode()
-        cells = re.split(r'Cell \d+ - Address: ', output)[1:]
-        networks = []
-        seen = set()
-        for cell in cells:
-            ssid_match = re.search(r'ESSID:"(.*?)"', cell)
-            signal_match = re.search(r'Signal level=(-?\d+)', cell)
-            ssid = ssid_match.group(1) if ssid_match else "<hidden>"
-            signal = int(signal_match.group(1)) if signal_match else None
-            if ssid and ssid not in seen and ssid != "<hidden>":
-                seen.add(ssid)
-                networks.append({"ssid": ssid, "signal": signal if signal else "?"})
-        return networks
-    except Exception as e:
-        print(f"[❌] Wi-Fi scan failed: {e}")
+        if ipaddress.ip_address(ip) in AP_SUBNET:
+            return
+    except Exception:
+        pass
+    abort(403, "This page is only available from the SoftAP network")
+
+@app.before_request
+def _gate():
+    # Allow only SoftAP clients (and localhost for debugging on the device)
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if ip not in ("127.0.0.1", "::1"):
+        only_from_softap()
+
+# ---------------- Wi-Fi Scan (STA_IF) ----------------
+def scan_wifi():
+    ensure_roles()
+    run(["nmcli", "dev", "set", STA_IF, "managed", "yes"])
+    run(["nmcli", "radio", "wifi", "on"])
+    run(["nmcli", "device", "wifi", "rescan", "ifname", STA_IF])
+
+    code, out, err = run([
+        "nmcli",
+        "-f", "SSID,SIGNAL,SECURITY",
+        "device", "wifi", "list",
+        "ifname", STA_IF
+    ], timeout=20)
+
+    if code != 0:
+        print(f"[scan] nmcli error: {err}")
         return []
+
+    lines = [l for l in out.splitlines() if l.strip()]
+    if lines and "SSID" in lines[0]:
+        lines = lines[1:]
+
+    networks = []
+    seen = set()
+    for line in lines:
+        parts = re.split(r"\s{2,}", line.strip())
+        if not parts:
+            continue
+        ssid = parts[0].strip()
+        signal = parts[1].strip() if len(parts) > 1 else "?"
+        security = parts[2].strip() if len(parts) > 2 else ""
+        if ssid and ssid != "--" and ssid not in seen:
+            seen.add(ssid)
+            try:
+                signal = int(signal)
+            except Exception:
+                pass
+            networks.append({"ssid": ssid, "signal": signal, "security": security})
+    return networks
 
 # ---------------- Flask Routes ----------------
 @app.route("/wifi")
@@ -106,125 +152,138 @@ def wifi_page():
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Jetson Wi-Fi Connect</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 24px auto; }
+    button { margin: 6px 0; padding: 8px 12px; }
+    .net { display:flex; justify-content:space-between; align-items:center; border:1px solid #ddd; border-radius:10px; padding:10px 12px; margin:8px 0;}
+    .ssid { font-weight: 600; }
+    .sig { opacity: .7; }
+    #connect-form { border:1px solid #ddd; padding:12px; border-radius:10px; margin-top:16px; }
+  </style>
   <script>
     async function loadWifiList() {
       try {
         const res = await fetch("/wifi-scan");
+        if (!res.ok) throw new Error("scan failed");
         const list = await res.json();
         const container = document.getElementById("wifi-list");
         container.innerHTML = "";
+        if (list.length === 0) {
+          container.textContent = "No networks found. (Try again)";
+          return;
+        }
         list.forEach(net => {
+          const row = document.createElement("div");
+          row.className = "net";
+          const left = document.createElement("div");
+          left.innerHTML = "<div class='ssid'>" + net.ssid + "</div><div class='sig'>Signal: " + net.signal + (typeof net.signal==="number"?"%":"") + " | " + net.security + "</div>";
           const btn = document.createElement("button");
-          btn.innerText = net.ssid + " (" + net.signal + " dBm)";
+          btn.innerText = "Connect";
           btn.onclick = () => showConnectForm(net.ssid);
-          container.appendChild(btn);
-          container.appendChild(document.createElement("br"));
+          row.appendChild(left); row.appendChild(btn);
+          container.appendChild(row);
         });
       } catch (err) {
-        console.warn("⚠️ Lost connection. Retrying in 3s...");
+        console.warn("⚠️ Lost connection. Retrying in 3s...", err);
         setTimeout(loadWifiList, 3000);
       }
     }
 
     function showConnectForm(ssid) {
       document.getElementById("selected-ssid").value = ssid;
+      document.getElementById("selected-ssid-label").innerText = ssid;
       document.getElementById("connect-form").style.display = "block";
+      document.getElementById("password").value = "";
+      document.getElementById("password").focus();
     }
 
     async function connectWifi(event) {
       event.preventDefault();
       const ssid = document.getElementById("selected-ssid").value;
       const password = document.getElementById("password").value;
-      const res = await fetch("/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ssid, password })
-      });
-      const data = await res.json();
-      alert(data.message);
+      try {
+        const res = await fetch("/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ssid, password })
+        });
+        const data = await res.json();
+        alert(data.message + (data.ip_info && data.ip_info.ip ? "\\nIP: " + data.ip_info.ip + "\\nGW: " + data.ip_info.gateway + "\\nDNS: " + (data.ip_info.dns||[]).join(", ") : ""));
+      } catch (e) {
+        alert("❌ Request failed.");
+      }
     }
 
-    window.onload = loadWifiList;
-    setInterval(loadWifiList, 10000);  // Refresh list every 10 seconds
+    window.onload = () => {
+      loadWifiList();
+      setInterval(loadWifiList, 10000); // refresh every 10s
+    };
   </script>
 </head>
 <body>
-  <h2>Nearby Wi-Fi Networks</h2>
+  <h2>Nearby Wi-Fi Networks (Client: {{sta}})</h2>
   <div id="wifi-list">Loading...</div>
 
   <div id="connect-form" style="display:none;">
-    <h3>Connect to selected network</h3>
+    <h3>Connect to: <span id="selected-ssid-label"></span></h3>
     <form onsubmit="connectWifi(event)">
       <input type="hidden" id="selected-ssid" name="ssid" />
-      <label>Password: </label><input type="password" id="password" required />
+      <label>Password: </label>
+      <input type="password" id="password" required />
       <button type="submit">Connect</button>
     </form>
   </div>
 </body>
 </html>
-""")
+""", sta=STA_IF)
 
 @app.route("/wifi-scan")
-def wifi_scan():
+def wifi_scan_route():
     return jsonify(scan_wifi())
 
 @app.route("/connect", methods=["POST"])
-def connect_wifi():
-    data = request.json
-    ssid = data.get("ssid")
-    password = data.get("password")
-    iface = get_wireless_interface()
+def connect_wifi_route():
+    data = request.get_json(force=True, silent=True) or {}
+    ssid = data.get("ssid", "").strip()
+    password = data.get("password", "")
 
-    if not iface:
-        return jsonify({"status": "error", "message": "❌ No wireless interface found."})
+    if not ssid:
+        return jsonify({"status": "error", "message": "❌ SSID is required."}), 400
 
-    try:
-        stop_softap_and_prepare_client_mode(iface)
+    ensure_roles()
 
-        subprocess.call(["nmcli", "connection", "delete", ssid], stderr=subprocess.DEVNULL)
-        subprocess.call(["nmcli", "connection", "delete", "temp-connection"], stderr=subprocess.DEVNULL)
+    # Clean any old connection with same name to avoid conflicts
+    run(["nmcli", "connection", "delete", ssid])
+    run(["nmcli", "connection", "delete", "temp-connection"])
 
-        result = subprocess.run([
-            "nmcli", "dev", "wifi", "connect", ssid,
-            "password", password,
-            "ifname", iface,
-            "name", "temp-connection"
-        ], capture_output=True, text=True, timeout=20)
+    # Try connect on STA_IF, do NOT touch SoftAP services
+    cmd = ["nmcli", "dev", "wifi", "connect", ssid, "ifname", STA_IF, "name", "temp-connection"]
+    if password:
+        cmd += ["password", password]
 
-        if result.returncode != 0:
-            print(f"[❌] nmcli error: {result.stderr}")
-            start_softap(iface)
+    code, out, err = run(cmd, timeout=30)
+    if code != 0:
+        msg = err or out or "Failed to connect."
+        return jsonify({"status": "error", "message": f"❌ {msg}"}), 200
+
+    # Wait a few seconds for DHCP
+    for _ in range(10):
+        if client_has_private_ip():
+            ip_info = get_ip4_info()
             return jsonify({
-                "status": "error",
-                "message": f"❌ Failed to connect to {ssid}. SoftAP restored."
-            })
+                "status": "success",
+                "message": f"✅ Connected to {ssid} successfully!",
+                "ip_info": ip_info
+            }), 200
+        time.sleep(1)
 
-        for _ in range(10):
-            ip_output = subprocess.check_output([
-                "nmcli", "-t", "-f", "IP4.ADDRESS", "device", "show", iface
-            ]).decode()
-            if any(line.startswith(("192.", "10.", "172.")) for line in ip_output.splitlines()):
-                return jsonify({
-                    "status": "success",
-                    "message": f"✅ Connected to {ssid} successfully!"
-                })
-            time.sleep(1)
-
-        print("[⚠️] No IP assigned after connection.")
-        start_softap(iface)
-        return jsonify({
-            "status": "error",
-            "message": f"⚠️ Connected to {ssid} but no IP assigned. SoftAP restored."
-        })
-
-    except Exception as e:
-        start_softap(iface)
-        return jsonify({
-            "status": "error",
-            "message": f"❌ Exception occurred: {str(e)}. SoftAP restored."
-        })
+    # Connected but no IP
+    return jsonify({"status": "error", "message": f"⚠️ Connected to {ssid} but no IP assigned."}), 200
 
 # ---------------- Run ----------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    ensure_roles()
+    app.run(host="192.168.4.1", port=5000)
+
