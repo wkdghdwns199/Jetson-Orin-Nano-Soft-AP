@@ -1,4 +1,4 @@
-# Jetson-Orin-Nano-Soft-AP
+# Jetson-Orin-Nano-Soft-AP ( 현재 Version 2 로 업로드 중이니 사용하지 마세요!)
 
 Jetson Orin Nano 에서 자체적인 네트워크를 생성하여 핸드폰과 연결하고, Flask 에서 제공하는 API를 통해 Jetson Orin Nano에서 인식되는 SSID 리스트 받아와 연결해주는 기능
 
